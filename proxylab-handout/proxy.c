@@ -2,8 +2,8 @@
  * proxy.c - CS:APP Web proxy
  *
  * TEAM MEMBERS: (put your names here)
- *     Student Name1, student1@cs.uky.edu 
- *     Student Name2, student2@cs.uky.edu 
+ *     Brian Scheper, bpsc222@g.uky.edu 
+ *     Andrew Johnston, andrewjacobjohnston@gmail.com 
  * 
  * IMPORTANT: Give a high level description of your code here. You
  * must also provide a header comment at the beginning of each
