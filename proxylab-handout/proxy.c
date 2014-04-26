@@ -18,6 +18,9 @@
 int parse_uri(char *uri, char *target_addr, char *path, int  *port);
 void format_log_entry(char *logstring, struct sockaddr_in *sockaddr, char *uri, int size);
 
+/* function that will read in disallowed words */
+void readDisallowed(char** disallowed);
+
 /* 
  * main - Main routine for the proxy program 
  */
@@ -29,6 +32,9 @@ int main(int argc, char **argv)
 	fprintf(stderr, "Usage: %s <port number>\n", argv[0]);
 	exit(0);
     }
+
+    char* disallowed[100];
+    readDisallowed(disallowed);
 
     exit(0);
 }
@@ -115,4 +121,30 @@ void format_log_entry(char *logstring, struct sockaddr_in *sockaddr,
     sprintf(logstring, "%s: %d.%d.%d.%d %s", time_str, a, b, c, d, uri);
 }
 
+
+void readDisallowed(char** disallowed) {
+
+    /* opening disallowed words file to read */
+    FILE *fp;
+    fp = fopen("DisallowedWords", "r");
+    if (fp == NULL) {
+	printf("Error opening DisallowedWords\n");
+	return;
+    }
+
+    /* index for disallowed words array */
+    int dis_index = 0;
+    /* buffer for each line of disallowed words file */
+    char line[100];
+    char *eof;
+
+    /* reading in a line from the file. Assuming a line isn't more than 100 characters. Put this line in the array. */
+    while ((eof = fgets(line, 100, fp)) != NULL) {
+	disallowed[dis_index] = strdup(line);
+	dis_index++;
+    }
+
+    /* closing file descriptor for disallowed words */
+    fclose(fp);
+}
 
