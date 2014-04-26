@@ -22,6 +22,8 @@ void format_log_entry(char *logstring, struct sockaddr_in *sockaddr, char *uri, 
 /* function that will read in disallowed words */
 void readDisallowed(char** disallowed);
 
+void echo(int connfd);
+
 /* 
  * main - Main routine for the proxy program 
  */
@@ -168,6 +170,7 @@ void readDisallowed(char** disallowed) {
     fclose(fp);
 }
 
+//Reads and echos our lines
 void echo(int connfd){
 	size_t n;
 	char buf[MAXLINE];
@@ -175,7 +178,7 @@ void echo(int connfd){
 
 	Rio_readinitb(&rio, connfd);
 	while((n = Rio_readlineb(&rio, buf, MAXLINE)) != 0){
-		printf("Server received %d bytes\n", n);
+		printf("Server received %ld bytes\n", n);
 		Rio_writen(connfd, buf, n);
 	}
 }
