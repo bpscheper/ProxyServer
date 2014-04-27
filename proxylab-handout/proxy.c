@@ -18,17 +18,13 @@
  */
 int parse_uri(char *uri, char *target_addr, char *path, int  *port);
 void format_log_entry(char *logstring, struct sockaddr_in *sockaddr, char *uri, int size);
-
-/* function that will read in disallowed words */
 void readDisallowed(char** disallowed);
-
 void proxy(int connfd);
-
-/* function that checks content of web page for disalloowed words */
 int isDisallowed(char* disallowed, char* line, int length);
 
 //Global variables
 FILE *logfile;
+
 
 /* 
  * main - Main routine for the proxy program 
@@ -47,19 +43,9 @@ int main(int argc, char **argv)
 	    exit(0);
     }
 
-    char line[100]= "Checking for disallowed words. Stupi";
+	//Create the arrow disallowed words
     char* disallowed[100];
     readDisallowed(disallowed);
-    int i = 0;
-    int count = 0;
-    while (disallowed[0][i] != '\0') {
-	count++;
-	i++;
-    }
-    int test = isDisallowed(disallowed[0], line, count);
-    if (test == 1)
-	printf("returned true");
-    fflush(stdout);
 
     //Create the listening port
 	port = atoi(argv[1]);
@@ -70,6 +56,8 @@ int main(int argc, char **argv)
 	//Open log file to append to
 	logfile = fopen("proxy.log", "a");
 
+	//Start listening for responses
+	//When a response is found, send the server response back
 	while (1) {
 		clientlen = sizeof(clientaddr);
 		connfd = Accept(listenfd, (SA *)&clientaddr, &clientlen);
@@ -80,8 +68,7 @@ int main(int argc, char **argv)
 		printf("Client connected from %s (%s)\n", hp->h_name, clientip);
 		proxy(connfd);
 	}
-
-	return 0;
+	exit(0);
 }
 
 
@@ -167,14 +154,13 @@ void format_log_entry(char *logstring, struct sockaddr_in *sockaddr,
 }
 
 
-void readDisallowed(char** disallowed) {
-
+void readDisallowed(char** disallowed){
     /* opening disallowed words file to read */
     FILE *fp;
-    fp = fopen("DisallowedWords", "r");
+	fp = fopen("DisallowedWords", "r");
     if (fp == NULL) {
-	printf("Error opening DisallowedWords\n");
-	return;
+		printf("Error opening DisallowedWords\n");
+		return;
     }
 
     /* index for disallowed words array */
@@ -186,8 +172,8 @@ void readDisallowed(char** disallowed) {
     /* reading in a line from the file. Assuming a line isn't more than 100 characters.
 	Put this line in the array. */
     while ((eof = fgets(line, 100, fp)) != NULL) {
-	disallowed[dis_index] = strdup(line);
-	dis_index++;
+		disallowed[dis_index] = strdup(line);
+		dis_index++;
     }
 
     /* closing file descriptor for disallowed words */
@@ -232,7 +218,6 @@ void proxy(int connfd){
 		//printf("method:%s\n", method);
 		//printf("uri:%s\n", uri);
 		//printf("version:%s\n", version);
-
 		//printf("hostname:%s\n", hostname);
 		//printf("pathname:%s\n", pathname);
 		//printf("port:%d\n", port);
@@ -265,6 +250,7 @@ void proxy(int connfd){
 	//Write respond back to the client
 	//printf("writing\n");
 	while((n = Rio_readnb(&rio_server, buf, MAXLINE)) > 0){
+		//printf("%s\n", buf);
 		Rio_writen(connfd, buf, n);
 	}
 
@@ -274,7 +260,6 @@ void proxy(int connfd){
 }
 
 int isDisallowed(char* disallowed, char* line, int length) {
-
 	int i = 0;
 	int index = 0;
 	while ((i < 100) && (line[i] != '\0')) {
