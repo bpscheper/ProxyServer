@@ -187,30 +187,41 @@ void proxy(int connfd){
 	char buf[MAXLINE], uri[MAXLINE], hostname[MAXLINE], pathname[MAXLINE];
 	rio_t rio;
 	char *token;
-	char method[20]; //Largest HTTP method (verb) is 16 chars, leave 20 for future.
+	char method[20], version[20]; //Largest HTTP method (verb) is 16 chars, leave 20 for future.
 
 	//Init the client socket
 	Rio_readinitb(&rio, connfd);
 
-	//Get the uri from the buffer
+	//Get the URI from the buffer
 	n = Rio_readlineb(&rio, buf, MAXLINE);
 	Rio_writen(connfd, buf, n);
 
 	token = strtok(buf, " ");
-	printf("token:%s", token);
-
-	while (token != NULL){
-		printf("token:%s", token);
-		//strcpy(method, token);
-
-		//token = strtok(buf, " ");
-		//strcpy(uri, token);
-		printf("method:%s", method);
-		//printf("uri:%s", uri);
+	if (token != NULL){
+		strcpy(method, token);
 
 		token = strtok(NULL, " ");
+		strcpy(uri, token);
+
+		token = strtok(NULL, " ");
+		strcpy(version, token);
+
+		//Parse the URI, if we have an error close the connection
+		if (parse_uri(uri, hostname, pathname+1, &port) == -1){
+			Close(connfd);
+			return;
+		}
+
+		printf("method:%s\n", method);
+		printf("uri:%s\n", uri);
+		printf("version:%s\n\n", version);
+
+		printf("hostname:%s\n", hostname);
+		printf("pathname:%s\n", pathname);
+		printf("port:%d\n", port);
 	}
-	
+
+	//We now have our URI, connect to the server now
 
 	while((n = Rio_readlineb(&rio, buf, MAXLINE)) != 0){
 		printf("Server received %ld bytes\n", n);
