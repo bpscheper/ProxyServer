@@ -185,7 +185,7 @@ void proxy(int connfd){
 	size_t n;
 	int serverfd;
 	int port = 0;
-	char buf[MAXLINE], uri[MAXLINE], hostname[MAXLINE], pathname[MAXLINE];
+	char buf[MAXLINE], uri[MAXLINE], hostname[MAXLINE], pathname[MAXLINE], header[MAXLINE];
 	rio_t rio_client, rio_server;
 	char *token;
 	char method[20], version[20]; //Largest HTTP method (verb) is 16 chars, leave 20 for future.
@@ -204,38 +204,55 @@ void proxy(int connfd){
 		token = strtok(NULL, " ");
 		strcpy(uri, token);
 
-		token = strtok(NULL, " ");
-		strcpy(version, token);
-
 		//Parse the URI, if we have an error close the connection
-		if (parse_uri(uri, hostname, pathname+1, &port) == -1){
+		pathname[0] = '/';
+		if (parse_uri(token, hostname, pathname+1, &port) == -1){
 			Close(connfd);
 			return;
 		}
 
+		token = strtok(NULL, " ");
+        strcpy(version, token);
+
 		printf("method:%s\n", method);
 		printf("uri:%s\n", uri);
-		printf("version:%s\n\n", version);
+		printf("version:%s\n", version);
 
 		printf("hostname:%s\n", hostname);
 		printf("pathname:%s\n", pathname);
 		printf("port:%d\n", port);
 	}
+	while (token != NULL){ //Read to the end of the buffer
+		token = strtok(NULL, " ");
+	}
 
 	//We now have our URI, connect to the server now
-	if ((serverfd = Open_clientfd(hostname, port) < 0)){
+	printf("Open server connection...\n");
+	if ((serverfd = Open_clientfd(hostname, port)) < 0){
 		Close(connfd);
 		return;
 	}
 	Rio_readinitb(&rio_server, serverfd);
 
-	while((n = Rio_readlineb(&rio_server, buf, MAXLINE)) != 0){
-		printf("Server received %ld bytes\n", n);
+	//Get the data from the server
+	sprintf(header, "%s %s %s", method, pathname, version);
+	Rio_writen(serverfd, header, strlen(header));
+
+	printf("response..\n");
+	while(((n = Rio_readlineb(&rio_client, buf, MAXLINE)) > 0) && buf[0] != '\r' && buf[0] != '\n'){
+		printf("%s", buf);
+		Rio_writen(serverfd, buf, n);
+	}
+	Rio_writen(serverfd, "\r\n", 2);
+	
+	printf("respond:%s\n", header);
+
+	//Write respond back to the client
+	printf("writing\n");
+	while((n = Rio_readnb(&rio_server, buf, MAXLINE)) > 0){
+		printf("%s\n", buf);
 		Rio_writen(connfd, buf, n);
 	}
-
-	//Get the data from the server
-	
 
 	//Close our open connections
 	Close(serverfd);
