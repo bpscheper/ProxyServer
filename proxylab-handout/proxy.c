@@ -24,6 +24,9 @@ void readDisallowed(char** disallowed);
 
 void proxy(int connfd);
 
+/* function that checks content of web page for disalloowed words */
+int isDisallowed(char* disallowed, char* line, int length);
+
 //Global variables
 FILE *logfile;
 
@@ -44,8 +47,19 @@ int main(int argc, char **argv)
 	    exit(0);
     }
 
+    char line[100]= "Checking for disallowed words. Stupi";
     char* disallowed[100];
     readDisallowed(disallowed);
+    int i = 0;
+    int count = 0;
+    while (disallowed[0][i] != '\0') {
+	count++;
+	i++;
+    }
+    int test = isDisallowed(disallowed[0], line, count);
+    if (test == 1)
+	printf("returned true");
+    fflush(stdout);
 
     //Create the listening port
 	port = atoi(argv[1]);
@@ -257,4 +271,22 @@ void proxy(int connfd){
 	//Close our open connections
 	Close(serverfd);
 	Close(connfd);
+}
+
+int isDisallowed(char* disallowed, char* line, int length) {
+
+	int i = 0;
+	int index = 0;
+	while ((i < 100) && (line[i] != '\0')) {
+		if (disallowed[index] == line[i]) {
+			index++;
+			if (index == (length-1)) {
+				return 1;
+			}
+		} else {
+			index = 0;
+		}
+		i++;
+	}
+	return 0;
 }
