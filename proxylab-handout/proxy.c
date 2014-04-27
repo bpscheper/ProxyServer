@@ -65,9 +65,9 @@ int main(int argc, char **argv)
 		clientip= inet_ntoa(clientaddr.sin_addr);
 		printf("Client connected from %s (%s)\n", hp->h_name, clientip);
 		proxy(connfd);
-		Close(connfd);
 	}
-	exit(0);
+
+	return 0;
 }
 
 
@@ -214,20 +214,21 @@ void proxy(int connfd){
 		token = strtok(NULL, " ");
         strcpy(version, token);
 
-		printf("method:%s\n", method);
-		printf("uri:%s\n", uri);
-		printf("version:%s\n", version);
+		//Debug lines
+		//printf("method:%s\n", method);
+		//printf("uri:%s\n", uri);
+		//printf("version:%s\n", version);
 
-		printf("hostname:%s\n", hostname);
-		printf("pathname:%s\n", pathname);
-		printf("port:%d\n", port);
+		//printf("hostname:%s\n", hostname);
+		//printf("pathname:%s\n", pathname);
+		//printf("port:%d\n", port);
 	}
 	while (token != NULL){ //Read to the end of the buffer
 		token = strtok(NULL, " ");
 	}
 
 	//We now have our URI, connect to the server now
-	printf("Open server connection...\n");
+	//printf("Open server connection...\n");
 	if ((serverfd = Open_clientfd(hostname, port)) < 0){
 		Close(connfd);
 		return;
@@ -238,19 +239,18 @@ void proxy(int connfd){
 	sprintf(header, "%s %s %s", method, pathname, version);
 	Rio_writen(serverfd, header, strlen(header));
 
-	printf("response..\n");
+	//printf("response..\n");
 	while(((n = Rio_readlineb(&rio_client, buf, MAXLINE)) > 0) && buf[0] != '\r' && buf[0] != '\n'){
-		printf("%s", buf);
+		//printf("%s", buf);
 		Rio_writen(serverfd, buf, n);
 	}
 	Rio_writen(serverfd, "\r\n", 2);
 	
-	printf("respond:%s\n", header);
+	//printf("respond:%s\n", header);
 
 	//Write respond back to the client
-	printf("writing\n");
+	//printf("writing\n");
 	while((n = Rio_readnb(&rio_server, buf, MAXLINE)) > 0){
-		printf("%s\n", buf);
 		Rio_writen(connfd, buf, n);
 	}
 
