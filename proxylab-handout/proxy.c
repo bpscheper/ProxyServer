@@ -22,7 +22,7 @@ void format_log_entry(char *logstring, struct sockaddr_in *sockaddr, char *uri, 
 /* function that will read in disallowed words */
 void readDisallowed(char** disallowed);
 
-void echo(int connfd);
+void proxy(int connfd);
 
 //Global variables
 FILE *logfile;
@@ -47,7 +47,7 @@ int main(int argc, char **argv)
     char* disallowed[100];
     readDisallowed(disallowed);
 
-    //Craete the listening port
+    //Create the listening port
 	port = atoi(argv[1]);
 	listenfd = Open_listenfd(port);
 	if (listenfd == -1)
@@ -64,7 +64,7 @@ int main(int argc, char **argv)
 		hp = Gethostbyaddr((const char *)&clientaddr.sin_addr.s_addr,sizeof(clientaddr.sin_addr.s_addr), AF_INET);
 		clientip= inet_ntoa(clientaddr.sin_addr);
 		printf("Client connected from %s (%s)\n", hp->h_name, clientip);
-		echo(connfd);
+		proxy(connfd);
 		Close(connfd);
 	}
 	exit(0);
@@ -169,7 +169,8 @@ void readDisallowed(char** disallowed) {
     char line[100];
     char *eof;
 
-    /* reading in a line from the file. Assuming a line isn't more than 100 characters. Put this line in the array. */
+    /* reading in a line from the file. Assuming a line isn't more than 100 characters.
+	Put this line in the array. */
     while ((eof = fgets(line, 100, fp)) != NULL) {
 	disallowed[dis_index] = strdup(line);
 	dis_index++;
@@ -179,13 +180,38 @@ void readDisallowed(char** disallowed) {
     fclose(fp);
 }
 
-//Reads and echos our lines
-void echo(int connfd){
+//Handles getting the client request and scanning it for disallowed words
+void proxy(int connfd){
 	size_t n;
-	char buf[MAXLINE];
+	int port = 0;
+	char buf[MAXLINE], uri[MAXLINE], hostname[MAXLINE], pathname[MAXLINE];
 	rio_t rio;
+	char *token;
+	char method[20]; //Largest HTTP method (verb) is 16 chars, leave 20 for future.
 
+	//Init the client socket
 	Rio_readinitb(&rio, connfd);
+
+	//Get the uri from the buffer
+	n = Rio_readlineb(&rio, buf, MAXLINE);
+	Rio_writen(connfd, buf, n);
+
+	token = strtok(buf, " ");
+	printf("token:%s", token);
+
+	while (token != NULL){
+		printf("token:%s", token);
+		//strcpy(method, token);
+
+		//token = strtok(buf, " ");
+		//strcpy(uri, token);
+		printf("method:%s", method);
+		//printf("uri:%s", uri);
+
+		token = strtok(NULL, " ");
+	}
+	
+
 	while((n = Rio_readlineb(&rio, buf, MAXLINE)) != 0){
 		printf("Server received %ld bytes\n", n);
 		Rio_writen(connfd, buf, n);
