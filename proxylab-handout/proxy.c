@@ -24,37 +24,46 @@ void readDisallowed(char** disallowed);
 
 void echo(int connfd);
 
+//Global variables
+FILE *logfile;
+
 /* 
  * main - Main routine for the proxy program 
  */
 int main(int argc, char **argv)
 {
-	int listenfd, connfd, port, clientlen;
+	int listenfd, connfd, port;
+	socklen_t clientlen;
 	struct sockaddr_in clientaddr;
 	struct hostent *hp;
-	char *haddrp;
+	char *clientip;
 
     /* Check arguments */
     if (argc != 2) {
-	    printf(stderr, "Usage: <port number>\n", argv[0]);
+	    fprintf(stderr,"Usage: %s <port number>\n", argv[0]);
 	    exit(0);
     }
 
     char* disallowed[100];
     readDisallowed(disallowed);
 
-    //Set up echo server
+    //Craete the listening port
 	port = atoi(argv[1]);
 	listenfd = Open_listenfd(port);
+	if (listenfd == -1)
+		unix_error("Error listening to the port");
+
+	//Open log file to append to
+	logfile = fopen("proxy.log", "a");
 
 	while (1) {
 		clientlen = sizeof(clientaddr);
 		connfd = Accept(listenfd, (SA *)&clientaddr, &clientlen);
+
 		/* Determine the domain name and IP address of the client */
-		hp = Gethostbyaddr((const char *)&clientaddr.sin_addr.s_addr,
-		sizeof(clientaddr.sin_addr.s_addr), AF_INET);
-		haddrp = inet_ntoa(clientaddr.sin_addr);
-		printf("server connected to %s (%s)\n", hp->h_name, haddrp);
+		hp = Gethostbyaddr((const char *)&clientaddr.sin_addr.s_addr,sizeof(clientaddr.sin_addr.s_addr), AF_INET);
+		clientip= inet_ntoa(clientaddr.sin_addr);
+		printf("Client connected from %s (%s)\n", hp->h_name, clientip);
 		echo(connfd);
 		Close(connfd);
 	}
