@@ -183,17 +183,18 @@ void readDisallowed(char** disallowed) {
 //Handles getting the client request and scanning it for disallowed words
 void proxy(int connfd){
 	size_t n;
+	int serverfd;
 	int port = 0;
 	char buf[MAXLINE], uri[MAXLINE], hostname[MAXLINE], pathname[MAXLINE];
-	rio_t rio;
+	rio_t rio_client, rio_server;
 	char *token;
 	char method[20], version[20]; //Largest HTTP method (verb) is 16 chars, leave 20 for future.
 
 	//Init the client socket
-	Rio_readinitb(&rio, connfd);
+	Rio_readinitb(&rio_client, connfd);
 
 	//Get the URI from the buffer
-	n = Rio_readlineb(&rio, buf, MAXLINE);
+	n = Rio_readlineb(&rio_client, buf, MAXLINE);
 	Rio_writen(connfd, buf, n);
 
 	token = strtok(buf, " ");
@@ -222,9 +223,21 @@ void proxy(int connfd){
 	}
 
 	//We now have our URI, connect to the server now
+	if ((serverfd = Open_clientfd(hostname, port) < 0)){
+		Close(connfd);
+		return;
+	}
+	Rio_readinitb(&rio_server, serverfd);
 
-	while((n = Rio_readlineb(&rio, buf, MAXLINE)) != 0){
+	while((n = Rio_readlineb(&rio_server, buf, MAXLINE)) != 0){
 		printf("Server received %ld bytes\n", n);
 		Rio_writen(connfd, buf, n);
 	}
+
+	//Get the data from the server
+	
+
+	//Close our open connections
+	Close(serverfd);
+	Close(connfd);
 }
