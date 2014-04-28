@@ -26,7 +26,6 @@ void newContent(char* content);
 FILE *logfile;
 char* disallowed[100] = { '\0' };
 
-
 /* 
  * main - Main routine for the proxy program 
  */
@@ -268,12 +267,13 @@ void proxy(int connfd) {
 
 	//Check the tempbuffer for disallowed characters
 	Rio_writen(connfd, buf, n);
-
-	int test = isDisallowed(disallowed, buf, MAXLINE);
-	printf("test:%d", test);
+	int test = isDisallowed(disallowed, tempbuffer, MAXLINE);
+	printf("test:%d\n", test);
 }
 
 //Checks to see if the string contains a disallowed character
+//1 - Found disallowed content
+//0 - Content ok
 int isDisallowed(char* disallowed, char* line, int length) {
 	int i = 0;
 	int index = 0;
