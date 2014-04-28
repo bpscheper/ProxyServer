@@ -200,7 +200,6 @@ void proxy(int connfd) {
 		}
 
 		//Get the response from the server
-		//printf("Server response\n");
 		clen = 0;
 		next = 0;
 		while((n = Rio_readlineb(&rio_server, buf, MAXLINE)) != 0) {
@@ -224,7 +223,13 @@ void proxy(int connfd) {
 				//Determine the length of the response
 				cread = 0;
 				while(cread < clen) {
-					n = Rio_readnb(&rio_server, buf, (clen-cread) < MAXLINE ? (clen-cread) : MAXLINE);
+					if ((clen - cread) < MAXLINE){
+						n = Rio_readnb(&rio_server, buf, clen-cread);
+					}
+					else{
+						n = Rio_readnb(&rio_server, buf, MAXLINE);
+					}
+					
 					if(n == 0) {
 						break;
 					}
