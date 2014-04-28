@@ -10,7 +10,6 @@
  * function that describes what that function does.
  */ 
 
-#include <sys/socket.h>
 #include "csapp.h"
 
 /*
