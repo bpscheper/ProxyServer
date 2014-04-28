@@ -24,6 +24,7 @@ void newContent(char* content);
 
 //Global variables
 FILE *logfile;
+char* disallowed[100] = { '\0' };
 
 
 /* 
@@ -37,7 +38,6 @@ int main(int argc, char **argv){
 	}
 
 	//Create the array of disallowed words
-    char* disallowed[100] = { '\0' };
     readDisallowed(disallowed);
 	
 	//Create the listening port
