@@ -25,7 +25,6 @@ int isDisallowed(char* disallowed, char* line, int length);
 FILE *logfile;
 char* disallowed[100] = { '\0' };
 
-
 /* 
  * main - Main routine for the proxy program 
  */
@@ -271,6 +270,8 @@ void proxy(int connfd, char** disallowed) {
 }
 
 //Checks to see if the string contains a disallowed character
+//1 - Found disallowed content
+//0 - Content ok
 int isDisallowed(char* disallowed, char* line, int length) {
 	int i = 0;
 	int index = 0;
