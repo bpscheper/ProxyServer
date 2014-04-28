@@ -29,45 +29,37 @@ FILE *logfile;
 /* 
  * main - Main routine for the proxy program 
  */
-int main(int argc, char **argv)
-{
-	int listenfd, connfd, port;
-	socklen_t clientlen;
-	struct sockaddr_in clientaddr;
-	struct hostent *hp;
-	char *clientip;
-
-    /* Check arguments */
-    if (argc != 2) {
-	    fprintf(stderr,"Usage: %s <port number>\n", argv[0]);
-	    exit(0);
-    }
+int main(int argc, char **argv){
+	/* Check arguments */
+	if (argc != 2) {
+		fprintf(stderr, "Usage: %s <port number>\n", argv[0]);
+		exit(0);
+	}
 
 	//Create the arrow disallowed words
     char* disallowed[100];
     readDisallowed(disallowed);
-
-    //Create the listening port
-	port = atoi(argv[1]);
+	
+	//Create the listening port
+	int port = atoi(argv[1]), connfd, listenfd;
+	socklen_t clientlen = sizeof(struct sockaddr_in);
+	struct sockaddr_in clientaddr;
+	struct hostent *hp;
+	char *clientip;
 	listenfd = Open_listenfd(port);
-	if (listenfd == -1)
-		unix_error("Error listening to the port");
 
-	//Open log file to append to
-	logfile = fopen("proxy.log", "a");
-
-	//Start listening for responses
-	//When a response is found, send the server response back
-	while (1) {
-		clientlen = sizeof(clientaddr);
-		connfd = Accept(listenfd, (SA *)&clientaddr, &clientlen);
-
-		/* Determine the domain name and IP address of the client */
+	//Starting listening for client connections
+	while(1) {
+		connfd = Accept(listenfd, (SA*)&clientaddr, &clientlen);
 		hp = Gethostbyaddr((const char *)&clientaddr.sin_addr.s_addr,sizeof(clientaddr.sin_addr.s_addr), AF_INET);
 		clientip= inet_ntoa(clientaddr.sin_addr);
+
 		printf("Client connected from %s (%s)\n", hp->h_name, clientip);
 		proxy(connfd);
+		Close(connfd);
+		printf("Connection closed\n");
 	}
+
 	exit(0);
 }
 
@@ -181,82 +173,75 @@ void readDisallowed(char** disallowed){
 }
 
 //Handles getting the client request and scanning it for disallowed words
-void proxy(int connfd){
+void proxy(int connfd) {
 	size_t n;
-	int serverfd;
-	int port = 0;
-	char buf[MAXLINE], uri[MAXLINE], hostname[MAXLINE], pathname[MAXLINE], header[MAXLINE];
+	int clientfd, port, clen, cread, nextend;;
+	char buf[MAXLINE], uri[MAXLINE], hostname[MAXLINE], pathname[MAXLINE];
 	rio_t rio_client, rio_server;
-	char *token;
-	char method[20], version[20]; //Largest HTTP method (verb) is 16 chars, leave 20 for future.
-
-	//Init the client socket
+	
+	//Get the URI from the client request
 	Rio_readinitb(&rio_client, connfd);
-
-	//Get the URI from the buffer
-	n = Rio_readlineb(&rio_client, buf, MAXLINE);
-	Rio_writen(connfd, buf, n);
-
-	token = strtok(buf, " ");
-	if (token != NULL){
-		strcpy(method, token);
-
-		token = strtok(NULL, " ");
-		strcpy(uri, token);
-
-		//Parse the URI, if we have an error close the connection
-		pathname[0] = '/';
-		if (parse_uri(token, hostname, pathname+1, &port) == -1){
-			Close(connfd);
+	while((n = Rio_readlineb(&rio_client, buf, MAXLINE)) != 0) {
+		if(parse_uri(strstr(buf, " ")+1, hostname, pathname, &port)) {
+			printf("Could not get URI\n");
 			return;
 		}
-
-		token = strtok(NULL, " ");
-        strcpy(version, token);
-
-		//Debug lines
-		//printf("method:%s\n", method);
-		//printf("uri:%s\n", uri);
-		//printf("version:%s\n", version);
-		//printf("hostname:%s\n", hostname);
-		//printf("pathname:%s\n", pathname);
-		//printf("port:%d\n", port);
-	}
-	while (token != NULL){ //Read to the end of the buffer
-		token = strtok(NULL, " ");
-	}
-
-	//We now have our URI, connect to the server now
-	//printf("Open server connection...\n");
-	if ((serverfd = Open_clientfd(hostname, port)) < 0){
-		Close(connfd);
-		return;
-	}
-	Rio_readinitb(&rio_server, serverfd);
-
-	//Get the data from the server
-	sprintf(header, "%s %s %s", method, pathname, version);
-	Rio_writen(serverfd, header, strlen(header));
-
-	//printf("response..\n");
-	while(((n = Rio_readlineb(&rio_client, buf, MAXLINE)) > 0) && buf[0] != '\r' && buf[0] != '\n'){
+		clientfd = Open_clientfd(hostname, port);
+		Rio_readinitb(&rio_server, clientfd);
+		//printf("GET: %s\n", hostname);
 		//printf("%s", buf);
-		Rio_writen(serverfd, buf, n);
-	}
-	Rio_writen(serverfd, "\r\n", 2);
-	
-	//printf("respond:%s\n", header);
+		Rio_writen(clientfd, buf, n);
 
-	//Write respond back to the client
-	//printf("writing\n");
-	while((n = Rio_readnb(&rio_server, buf, MAXLINE)) > 0){
-		//printf("%s\n", buf);
-		Rio_writen(connfd, buf, n);
-	}
+		//Get the request from the client
+		while((n = Rio_readlineb(&rio_client, buf, MAXLINE)) != 0) {
+			//printf("Getting request\n");
+			Rio_writen(clientfd, buf, n);
 
-	//Close our open connections
-	Close(serverfd);
-	Close(connfd);
+			//Check to see that we have hit the line break in the header yet
+			if(!strcmp(buf, "\r\n"))
+				break;
+		}
+
+		//Get the response from the server
+		//printf("Server response\n");
+		clen = 0;
+		nextend = 0;
+		while((n = Rio_readlineb(&rio_server, buf, MAXLINE)) != 0) {
+			//printf("	%s\n", buf);
+			Rio_writen(connfd, buf, n);
+
+			//try to determine the header length
+			if(strstr(buf, "Content-Length") != NULL) {
+				clen = atoi(strstr(buf, " ")+1);
+			}
+
+			//Read the rest of the response
+			if(!strcmp(buf, "\r\n")) {
+				if((clen < 0) && !nextend){
+					nextend = 1;
+					continue;
+				}
+				else if((clen < 0) && nextend){
+					break;
+				}
+				
+				//Determine the length of the response
+				cread = 0;
+				while(cread < clen) {
+					//printf("Read: %d, Length: %d\n", cread, clen);
+					n = Rio_readnb(&rio_server, buf, (clen-cread) < MAXLINE ? (clen-cread) : MAXLINE);
+					if(n == 0) {
+						break;
+					}
+					cread += n;
+					Rio_writen(connfd, buf, n);
+				}
+				break;
+			}
+		}
+		//printf("Completed\n");
+		break;
+	}
 }
 
 int isDisallowed(char* disallowed, char* line, int length) {
