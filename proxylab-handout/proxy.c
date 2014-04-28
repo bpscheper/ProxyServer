@@ -23,6 +23,7 @@ int isDisallowed(char* disallowed, char* line, int length);
 
 //Global variables
 FILE *logfile;
+char disallowed[100] = { '\0' };
 
 
 /* 
@@ -35,8 +36,7 @@ int main(int argc, char **argv){
 		exit(0);
 	}
 
-	//Create the arrow disallowed words
-    char* disallowed[100];
+	//Create the array of disallowed words
     readDisallowed(disallowed);
 	
 	//Create the listening port
@@ -55,7 +55,7 @@ int main(int argc, char **argv){
 
 		printf("Client connected from %s (%s)\n", hp->h_name, clientip);
 		proxy(connfd);
-		Close(connfd);
+		//Close(connfd);
 		printf("Connection closed\n");
 	}
 
@@ -177,7 +177,11 @@ void proxy(int connfd) {
 	int clientfd, port, clen, cread, next;
 	char buf[MAXLINE], hostname[MAXLINE], pathname[MAXLINE];
 	rio_t rio_client, rio_server;
+	char tempbuffer[MAXLINE];
 	
+	//Set the memory here
+	memset(tempbuffer, 0, MAXLINE);
+
 	//Get the URI from the client request
 	Rio_readinitb(&rio_client, connfd);
 	while((n = Rio_readlineb(&rio_client, buf, MAXLINE)) != 0) {
@@ -233,19 +237,28 @@ void proxy(int connfd) {
 						break;
 					}
 					cread += n;
-					Rio_writen(connfd, buf, n);
+
+					//Copy the string into the temp buffer
+					strcat(tempbuffer, buf);
 				}
 				break;
 			}
 		}
 		break;
 	}
+
+	//Check the tempbuffer for disallowed characters
+	Rio_writen(connfd, buf, n);
+
+	int test = isDisallowed(disallowed, buf, MAXLINE);
+	printf("test:%d", test);
 }
 
 //Checks to see if the string contains a disallowed character
 int isDisallowed(char* disallowed, char* line, int length) {
 	int i = 0;
 	int index = 0;
+
 	while ((i < 100) && (line[i] != '\0')) {
 		if (disallowed[index] == line[i]) {
 			index++;
