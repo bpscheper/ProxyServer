@@ -1,0 +1,13 @@
+
+This project is to create a proxy server to interact between the web browser and the web server. 
+
+Algorithms:
+To read words in from the DisallowedWords file, we used fgets and assumed that the line would be no more than 100 characters long. 
+
+To check the content of the webpage for the disallowed words, we checked each individual character against the disallowed words. If the characters matched, we moved to the next character in the disallowed words and checked that character. If it was not equal, we started over at the beginning of the disallowed word.
+
+Special Features:
+None
+
+Limitations:
+
