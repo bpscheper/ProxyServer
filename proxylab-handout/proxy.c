@@ -175,8 +175,8 @@ void readDisallowed(char** disallowed){
 //Handles getting the client request and scanning it for disallowed words
 void proxy(int connfd) {
 	size_t n;
-	int clientfd, port, clen, cread, nextend;;
-	char buf[MAXLINE], uri[MAXLINE], hostname[MAXLINE], pathname[MAXLINE];
+	int clientfd, port, clen, cread, next;
+	char buf[MAXLINE], hostname[MAXLINE], pathname[MAXLINE];
 	rio_t rio_client, rio_server;
 	
 	//Get the URI from the client request
@@ -188,13 +188,10 @@ void proxy(int connfd) {
 		}
 		clientfd = Open_clientfd(hostname, port);
 		Rio_readinitb(&rio_server, clientfd);
-		//printf("GET: %s\n", hostname);
-		//printf("%s", buf);
 		Rio_writen(clientfd, buf, n);
 
 		//Get the request from the client
 		while((n = Rio_readlineb(&rio_client, buf, MAXLINE)) != 0) {
-			//printf("Getting request\n");
 			Rio_writen(clientfd, buf, n);
 
 			//Check to see that we have hit the line break in the header yet
@@ -205,9 +202,8 @@ void proxy(int connfd) {
 		//Get the response from the server
 		//printf("Server response\n");
 		clen = 0;
-		nextend = 0;
+		next = 0;
 		while((n = Rio_readlineb(&rio_server, buf, MAXLINE)) != 0) {
-			//printf("	%s\n", buf);
 			Rio_writen(connfd, buf, n);
 
 			//try to determine the header length
@@ -217,18 +213,17 @@ void proxy(int connfd) {
 
 			//Read the rest of the response
 			if(!strcmp(buf, "\r\n")) {
-				if((clen < 0) && !nextend){
-					nextend = 1;
+				if((clen < 0) && !next){
+					next = 1;
 					continue;
 				}
-				else if((clen < 0) && nextend){
+				else if((clen < 0) && next){
 					break;
 				}
 				
 				//Determine the length of the response
 				cread = 0;
 				while(cread < clen) {
-					//printf("Read: %d, Length: %d\n", cread, clen);
 					n = Rio_readnb(&rio_server, buf, (clen-cread) < MAXLINE ? (clen-cread) : MAXLINE);
 					if(n == 0) {
 						break;
@@ -239,11 +234,11 @@ void proxy(int connfd) {
 				break;
 			}
 		}
-		//printf("Completed\n");
 		break;
 	}
 }
 
+//Checks to see if the string contains a disallowed character
 int isDisallowed(char* disallowed, char* line, int length) {
 	int i = 0;
 	int index = 0;
