@@ -18,11 +18,12 @@
 int parse_uri(char *uri, char *target_addr, char *path, int  *port);
 void format_log_entry(char *logstring, struct sockaddr_in *sockaddr, char *uri, int size);
 void readDisallowed(char** disallowed);
-void proxy(int connfd);
+void proxy(int connfd, char** disallowed);
 int isDisallowed(char* disallowed, char* line, int length);
 
 //Global variables
 FILE *logfile;
+char* disallowed[100] = { '\0' };
 
 
 /* 
@@ -34,9 +35,6 @@ int main(int argc, char **argv){
 		fprintf(stderr, "Usage: %s <port number>\n", argv[0]);
 		exit(0);
 	}
-
-	// flag for blocked content. set to 1 is disallowed words match.
-	int blocked = 0;
 
 	//Create the arrY disallowed words
 	char* disallowed[100] = { '\0' };
@@ -57,26 +55,9 @@ int main(int argc, char **argv){
 		clientip= inet_ntoa(clientaddr.sin_addr);
 
 		printf("Client connected from %s (%s)\n", hp->h_name, clientip);
-		proxy(connfd);
-		Close(connfd);
+		proxy(connfd, disallowed);
+		//Close(connfd);
 		printf("Connection closed\n");
-	}
-	
-	char* line = "Stupid words";
-	char* content;
-
-	int index = 0;
-	while (disallowed[index] != 0) {
-		int count = 0;
-		while (disallowed[index][count] != '\0') {
-			count++;
-		}
-		int dis = isDisallowed(disallowed[index], line, count);
-		if (dis == 1) {
-			blocked = 1;
-			content = "<html>We're sorry. That page has some disallowed content and has been blocked. </html>";
-		}
-		index++;
 	}
 
 	exit(0);
@@ -192,12 +173,16 @@ void readDisallowed(char** disallowed){
 }
 
 //Handles getting the client request and scanning it for disallowed words
-void proxy(int connfd) {
+void proxy(int connfd, char** disallowed) {
 	size_t n;
 	int clientfd, port, clen, cread, next;
 	char buf[MAXLINE], hostname[MAXLINE], pathname[MAXLINE];
 	rio_t rio_client, rio_server;
+	char tempbuffer[MAXLINE];
 	
+	//Set the memory here
+	memset(tempbuffer, 0, MAXLINE);
+
 	//Get the URI from the client request
 	Rio_readinitb(&rio_client, connfd);
 	while((n = Rio_readlineb(&rio_client, buf, MAXLINE)) != 0) {
@@ -253,19 +238,43 @@ void proxy(int connfd) {
 						break;
 					}
 					cread += n;
-					Rio_writen(connfd, buf, n);
+
+					//Copy the string into the temp buffer
+					strcat(tempbuffer, buf);
 				}
 				break;
 			}
 		}
 		break;
 	}
+
+	// flag used for blocked content
+	int blocked = 0;
+
+	//Check the tempbuffer for disallowed characters
+	Rio_writen(connfd, buf, n);
+
+        char* content;
+        int index = 0;
+        while (disallowed[index] != 0) {
+                int count = 0;
+                while (disallowed[index][count] != '\0') {
+                        count++;
+                }
+                int dis = isDisallowed(disallowed[index], buf, count);
+                if (dis == 1) {
+                        blocked = 1;
+                        content = "<html>We're sorry. That page has some disallowed content and has been blocked. </html>";
+                }
+                index++;
+        }
 }
 
 //Checks to see if the string contains a disallowed character
 int isDisallowed(char* disallowed, char* line, int length) {
 	int i = 0;
 	int index = 0;
+
 	while ((i < 100) && (line[i] != '\0')) {
 		if (disallowed[index] == line[i]) {
 			index++;
