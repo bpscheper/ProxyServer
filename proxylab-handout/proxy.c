@@ -20,7 +20,6 @@ void format_log_entry(char *logstring, struct sockaddr_in *sockaddr, char *uri, 
 void readDisallowed(char** disallowed);
 void proxy(int connfd);
 int isDisallowed(char* disallowed, char* line, int length);
-void newContent(char* content);
 
 //Global variables
 FILE *logfile;
@@ -36,9 +35,12 @@ int main(int argc, char **argv){
 		exit(0);
 	}
 
-	//Create the arrow disallowed words
-    char* disallowed[100] = { '\0' };
-    readDisallowed(disallowed);
+	// flag for blocked content. set to 1 is disallowed words match.
+	int blocked = 0;
+
+	//Create the arrY disallowed words
+	char* disallowed[100] = { '\0' };
+	readDisallowed(disallowed);
 	
 	//Create the listening port
 	int port = atoi(argv[1]), connfd, listenfd;
@@ -59,7 +61,7 @@ int main(int argc, char **argv){
 		Close(connfd);
 		printf("Connection closed\n");
 	}
-
+	
 	char* line = "Stupid words";
 	char* content;
 
@@ -70,11 +72,10 @@ int main(int argc, char **argv){
 			count++;
 		}
 		int dis = isDisallowed(disallowed[index], line, count);
-		if (dis == 1)
-			newContent(content);
-		else
-			printf("That is fine");
-		fflush(stdout);
+		if (dis == 1) {
+			blocked = 1;
+			content = "<html>We're sorry. That page has some disallowed content and has been blocked. </html>";
+		}
 		index++;
 	}
 
