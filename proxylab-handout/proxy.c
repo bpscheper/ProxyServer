@@ -20,6 +20,7 @@ void format_log_entry(char *logstring, struct sockaddr_in *sockaddr, char *uri, 
 void readDisallowed(char** disallowed);
 void proxy(int connfd);
 int isDisallowed(char* disallowed, char* line, int length);
+void newContent(char* content);
 
 //Global variables
 FILE *logfile;
@@ -36,7 +37,7 @@ int main(int argc, char **argv){
 	}
 
 	//Create the arrow disallowed words
-    char* disallowed[100];
+    char* disallowed[100] = { '\0' };
     readDisallowed(disallowed);
 	
 	//Create the listening port
@@ -57,6 +58,24 @@ int main(int argc, char **argv){
 		proxy(connfd);
 		Close(connfd);
 		printf("Connection closed\n");
+	}
+
+	char* line = "Stupid words";
+	char* content;
+
+	int index = 0;
+	while (disallowed[index] != 0) {
+		int count = 0;
+		while (disallowed[index][count] != '\0') {
+			count++;
+		}
+		int dis = isDisallowed(disallowed[index], line, count);
+		if (dis == 1)
+			newContent(content);
+		else
+			printf("That is fine");
+		fflush(stdout);
+		index++;
 	}
 
 	exit(0);
